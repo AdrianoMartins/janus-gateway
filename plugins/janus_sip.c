@@ -1169,9 +1169,15 @@ static int janus_sip_srtp_set_local(janus_sip_session *session, gboolean video, 
 		session->account.username, master_length, key_length, salt_length);
 	/* Generate key/salt */
 	uint8_t *key = g_malloc0(master_length);
+	if(!key)
+		JANUS_LOG(LOG_ERR, "Allocation error - key\n");
+		return -2;
 	srtp_crypto_get_random(key, master_length);
 	/* Set SRTP policies */
 	srtp_policy_t *policy = video ? &session->media.video_local_policy : &session->media.audio_local_policy;
+	if(!policy)
+		JANUS_LOG(LOG_ERR, "Allocation error - policy - video\n");
+		return -2;
 	switch(session->media.srtp_profile) {
 		case JANUS_SRTP_AES128_CM_SHA1_32:
 			srtp_crypto_policy_set_aes_cm_128_hmac_sha1_32(&(policy->rtp));
@@ -1261,6 +1267,9 @@ static int janus_sip_srtp_set_remote(janus_sip_session *session, gboolean video,
 	}
 	/* Set SRTP policies */
 	srtp_policy_t *policy = video ? &session->media.video_remote_policy : &session->media.audio_remote_policy;
+	if(!policy)
+		JANUS_LOG(LOG_ERR, "Allocation error - policy - video\n");
+		return -3;
 	switch(session->media.srtp_profile) {
 		case JANUS_SRTP_AES128_CM_SHA1_32:
 			srtp_crypto_policy_set_aes_cm_128_hmac_sha1_32(&(policy->rtp));
@@ -1966,6 +1975,11 @@ void janus_sip_create_session(janus_plugin_session *handle, int *error) {
 		return;
 	}
 	janus_sip_session *session = g_malloc0(sizeof(janus_sip_session));
+	if(!session){
+		*error = -1;
+		JANUS_LOG(LOG_ERR, "Allocation error - session\n");
+		return;
+	}
 	session->handle = handle;
 	session->account.identity = NULL;
 	session->account.force_udp = FALSE;
@@ -2204,6 +2218,10 @@ struct janus_plugin_result *janus_sip_handle_message(janus_plugin_session *handl
 	janus_mutex_unlock(&sessions_mutex);
 
 	janus_sip_message *msg = g_malloc(sizeof(janus_sip_message));
+	if(!msg){
+		JANUS_LOG(LOG_ERR, "Allocation error - msg\n");
+		return janus_plugin_result_new(JANUS_PLUGIN_ERROR, "Allocation error - sip msg", NULL);
+	}
 	msg->handle = handle;
 	msg->transaction = transaction;
 	msg->message = message;
@@ -2658,6 +2676,12 @@ static void *janus_sip_handler(void *data) {
 				session->account.username = ms->account.username ? g_strdup(ms->account.username) : NULL;
 				if(session->stack == NULL) {
 					session->stack = g_malloc0(sizeof(ssip_t));
+					if(!session->stack) {
+						JANUS_LOG(LOG_ERR, "Allocation error - session->stack\n");
+						error_code = JANUS_SIP_ERROR_HELPER_ERROR;
+						g_snprintf(error_cause, 512, "Allocation error - session->stack");
+						goto error;
+					}
 					su_home_init(session->stack->s_home);
 				}
 				session->stack->session = session;
@@ -3370,6 +3394,12 @@ static void *janus_sip_handler(void *data) {
 			} else {
 				/* If call-id does not exist in request, create a random one */
 				callid = g_malloc0(24);
+				if(!callid){
+					JANUS_LOG(LOG_ERR, "Allocation error - session->stack\n");
+					error_code = JANUS_SIP_ERROR_LIBSOFIA_ERROR;
+					g_snprintf(error_cause, 512, "Allocation error - callid");
+					goto error;
+				}
 				janus_sip_random_string(24, callid);
 			}
 			/* Also notify event handlers */
@@ -4879,13 +4909,19 @@ void janus_sip_sofia_callback(nua_event_t event, int status, char const *phrase,
 					continue;
 				}
 				janus_sip_transfer *t = g_malloc(sizeof(janus_sip_transfer));
-				janus_refcount_increase(&session->ref);
-				t->session = session;
-				t->referred_by = referred_by ? g_strdup(referred_by) : NULL;
-				t->custom_headers = custom_headers ? g_strdup(custom_headers) : NULL;
-				t->nh_s = nh;
-				nua_save_event(nua, t->saved);
-				g_hash_table_insert(transfers, GUINT_TO_POINTER(refer_id), t);
+				if(!t){
+					JANUS_LOG(LOG_ERR, "Missing Refer-To header - no have memory to alloc\n");
+					break;
+				}
+				else{
+					janus_refcount_increase(&session->ref);
+					t->session = session;
+					t->referred_by = referred_by ? g_strdup(referred_by) : NULL;
+					t->custom_headers = custom_headers ? g_strdup(custom_headers) : NULL;
+					t->nh_s = nh;
+					nua_save_event(nua, t->saved);
+					g_hash_table_insert(transfers, GUINT_TO_POINTER(refer_id), t);
+				}
 			}
 			janus_mutex_unlock(&sessions_mutex);
 			/* Notify the application */
@@ -6475,6 +6511,10 @@ gpointer janus_sip_sofia_thread(gpointer user_data) {
 	}
 	JANUS_LOG(LOG_VERB, "Joining sofia loop thread (%s)...\n", session->account.username);
 	session->stack = g_malloc0(sizeof(ssip_t));
+	if(!session->stack){
+		JANUS_LOG(LOG_ERR, "Allocation error - session->stack\n");
+		return NULL;
+	}
 	su_home_init(session->stack->s_home);
 	session->stack->session = session;
 	session->stack->s_nua = NULL;

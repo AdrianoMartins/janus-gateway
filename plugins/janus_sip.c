@@ -996,7 +996,7 @@ static void janus_sip_media_reset(janus_sip_session *session);
 
 static void janus_sip_call_update_status(janus_sip_session *session, janus_sip_call_status new_status) {
 	if(session->status != new_status) {
-		JANUS_LOG(LOG_VERB, "[%s] Call status change: [%s]-->[%s]\n", session->account.username == NULL ? "null" : session->account.username, janus_sip_call_status_string(session->status), janus_sip_call_status_string(new_status));
+		JANUS_LOG(LOG_INFO, "[%s] Call status change: [%s]-->[%s]\n", session->account.username == NULL ? "null" : session->account.username, janus_sip_call_status_string(session->status), janus_sip_call_status_string(new_status));
 		session->status = new_status;
 	}
 }
@@ -2233,7 +2233,7 @@ struct janus_plugin_result *janus_sip_handle_message(janus_plugin_session *handl
 }
 
 void janus_sip_setup_media(janus_plugin_session *handle) {
-	JANUS_LOG(LOG_INFO, "[%s-%p] WebRTC media is now available\n", JANUS_SIP_PACKAGE, handle);
+	JANUS_LOG(LOG_INFO, "[%s-%p] WebRTC media setup\n", JANUS_SIP_PACKAGE, handle);
 	if(g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized))
 		return;
 	janus_mutex_lock(&sessions_mutex);
@@ -2250,6 +2250,7 @@ void janus_sip_setup_media(janus_plugin_session *handle) {
 	g_atomic_int_set(&session->established, 1);
 	g_atomic_int_set(&session->establishing, 0);
 	g_atomic_int_set(&session->hangingup, 0);
+	JANUS_LOG(LOG_INFO, "[%s-%p] [%s] WebRTC media is now available\n", JANUS_SIP_PACKAGE, handle, session->account.username);
 	janus_mutex_unlock(&sessions_mutex);
 	/* TODO Only relay RTP/RTCP when we get this event */
 }
@@ -2487,7 +2488,8 @@ static void janus_sip_recorder_close(janus_sip_session *session,
 }
 
 void janus_sip_hangup_media(janus_plugin_session *handle) {
-	JANUS_LOG(LOG_INFO, "[%s-%p] No WebRTC media anymore\n", JANUS_SIP_PACKAGE, handle);
+	janus_sip_session *session = janus_sip_lookup_session(handle);
+	JANUS_LOG(LOG_INFO, "[%s-%p] [%s] No WebRTC media anymore\n", JANUS_SIP_PACKAGE, handle, session->account.username);
 	janus_mutex_lock(&sessions_mutex);
 	janus_sip_hangup_media_internal(handle);
 	janus_mutex_unlock(&sessions_mutex);
@@ -4679,7 +4681,7 @@ void janus_sip_sofia_callback(nua_event_t event, int status, char const *phrase,
 					janus_sip_sofia_callback(event, status, phrase, nua, magic, nh, helper, sip, tags);
 					break;
 				}
-				JANUS_LOG(LOG_VERB, "\tAlready in a call (busy, status=%s)\n", janus_sip_call_status_string(session->status));
+				JANUS_LOG(LOG_INFO, "[%s] Already in a call (busy, status=%s)\n", session->account.username, janus_sip_call_status_string(session->status));
 				nua_respond(nh, 486, sip_status_phrase(486), TAG_END());
 				/* Notify the web app about the missed invite */
 				json_t *missed = json_object();

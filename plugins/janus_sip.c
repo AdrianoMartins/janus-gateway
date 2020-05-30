@@ -994,6 +994,8 @@ static void janus_sip_srtp_cleanup(janus_sip_session *session);
 static void janus_sip_media_reset(janus_sip_session *session);
 
 static void janus_sip_call_update_status(janus_sip_session *session, janus_sip_call_status new_status) {
+	if(session == NULL)
+		return;
 	if(session->status != new_status) {
 		JANUS_LOG(LOG_VERB, "[%s] Call status change: [%s]-->[%s]\n", session->account.username == NULL ? "null" : session->account.username, janus_sip_call_status_string(session->status), janus_sip_call_status_string(new_status));
 		session->status = new_status;
@@ -1001,6 +1003,8 @@ static void janus_sip_call_update_status(janus_sip_session *session, janus_sip_c
 }
 
 static gboolean janus_sip_call_is_established(janus_sip_session *session) {
+	if(session == NULL)
+		return FALSE;
 	return (session->status == janus_sip_call_status_incall ||
 		session->status == janus_sip_call_status_incall_reinviting ||
 		session->status == janus_sip_call_status_incall_reinvited) ? TRUE : FALSE;
@@ -1009,12 +1013,18 @@ static gboolean janus_sip_call_is_established(janus_sip_session *session) {
 static void janus_sip_media_reset(janus_sip_session *session);
 
 static void janus_sip_session_destroy(janus_sip_session *session) {
+	if(session == NULL)
+		return;
 	if(session && g_atomic_int_compare_and_exchange(&session->destroyed, 0, 1))
 		janus_refcount_decrease(&session->ref);
 }
 
 static void janus_sip_session_free(const janus_refcount *session_ref) {
+	if(session_ref == NULL)
+		return;
 	janus_sip_session *session = janus_refcount_containerof(session_ref, janus_sip_session, ref);
+	if(!session)
+		return;
 	/* Remove the reference to the core plugin session */
 	janus_refcount_decrease(&session->handle->ref);
 	/* This session can be destroyed, free all the resources */
@@ -1105,7 +1115,9 @@ static void janus_sip_message_free(janus_sip_message *msg) {
 
 	if(msg->handle && msg->handle->plugin_handle) {
 		janus_sip_session *session = (janus_sip_session *)msg->handle->plugin_handle;
-		janus_refcount_decrease(&session->ref);
+		if(session) {
+			janus_refcount_decrease(&session->ref);
+		}
 	}
 	msg->handle = NULL;
 
@@ -1428,6 +1440,8 @@ static void janus_sip_remove_quotes(char *str) {
 
 static json_t *janus_sip_get_incoming_headers(const sip_t *sip, const janus_sip_session *session) {
 	json_t *headers = json_object();
+	if(session == NULL)
+		return headers;
 	if(!sip)
 		return headers;
 	sip_unknown_t *unknown_header = sip->sip_unknown;
@@ -2927,7 +2941,7 @@ static void *janus_sip_handler(void *data) {
 				g_snprintf(error_cause, 512, "Missing session or Sofia stack");
 				goto error;
 			}
-			if(session->stack->s_nh_r != NULL) {
+			if(session != NULL && session->stack->s_nh_r != NULL) {
 				nua_handle_destroy(session->stack->s_nh_r);
 				session->stack->s_nh_r = NULL;
 			}
@@ -4371,6 +4385,8 @@ error:
 void janus_sip_sofia_callback(nua_event_t event, int status, char const *phrase, nua_t *nua, nua_magic_t *magic, nua_handle_t *nh, nua_hmagic_t *hmagic, sip_t const *sip, tagi_t tags[])
 {
 	janus_sip_session *session = (janus_sip_session *)(hmagic ? hmagic : magic);
+	if(!session)
+		return;
 	ssip_t *ssip = session->stack;
 
 	/* Notify event handlers about the content of the whole incoming SIP message, if any */
@@ -5975,6 +5991,8 @@ static void janus_sip_connect_sockets(janus_sip_session *session, struct sockadd
 }
 
 static void janus_sip_media_cleanup(janus_sip_session *session) {
+	if(session == NULL)
+		return;
 	if(session->media.audio_rtp_fd != -1) {
 		close(session->media.audio_rtp_fd);
 		session->media.audio_rtp_fd = -1;
@@ -6379,7 +6397,7 @@ static void *janus_sip_relay_thread(void *data) {
 /* Sofia Event thread */
 gpointer janus_sip_sofia_thread(gpointer user_data) {
 	janus_sip_session *session = (janus_sip_session *)user_data;
-	if(session == NULL) {
+	if(!session) {
 		g_thread_unref(g_thread_self());
 		return NULL;
 	}

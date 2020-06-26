@@ -996,7 +996,7 @@ static void janus_sip_media_reset(janus_sip_session *session);
 
 static void janus_sip_call_update_status(janus_sip_session *session, janus_sip_call_status new_status) {
 	if(session->status != new_status) {
-		JANUS_LOG(LOG_VERB, "[%s] Call status change: [%s]-->[%s]\n", session->account.username == NULL ? "null" : session->account.username, janus_sip_call_status_string(session->status), janus_sip_call_status_string(new_status));
+		JANUS_LOG(LOG_INFO, "[%s] Call status change: [%s]-->[%s]\n", session->account.username == NULL ? "null" : session->account.username, janus_sip_call_status_string(session->status), janus_sip_call_status_string(new_status));
 		session->status = new_status;
 	}
 }
@@ -2072,7 +2072,7 @@ void janus_sip_destroy_session(janus_plugin_session *handle, int *error) {
 		*error = -2;
 		return;
 	}
-	JANUS_LOG(LOG_VERB, "Destroying SIP session (%s)...\n", session->account.username ? session->account.username : "unregistered user");
+	JANUS_LOG(LOG_INFO, "Destroying SIP session (%s)...\n", session->account.username ? session->account.username : "unregistered user");
 	janus_sip_hangup_media_internal(handle);
 	/* If this is a master or helper session, update the related sessions */
 	if(session->master_id != 0) {
@@ -3300,7 +3300,7 @@ static void *janus_sip_handler(void *data) {
 				g_snprintf(error_cause, 512, "The SIP plugin does not support DataChannels");
 				goto error;
 			}
-			JANUS_LOG(LOG_VERB, "%s is calling %s\n", session->account.username, uri_text);
+			JANUS_LOG(LOG_INFO, "%s is calling %s\n", session->account.username, uri_text);
 			JANUS_LOG(LOG_VERB, "This is involving a negotiation (%s) as well:\n%s\n", msg_sdp_type, msg_sdp);
 			/* Clean up SRTP stuff from before first, in case it's still needed */
 			janus_sip_srtp_cleanup(session);
@@ -3597,7 +3597,7 @@ static void *janus_sip_handler(void *data) {
 				goto error;
 			}
 			/* Accept a call from another peer */
-			JANUS_LOG(LOG_VERB, "We're accepting the call from %s\n", session->callee);
+			JANUS_LOG(LOG_INFO, "We're accepting the call from %s\n", session->callee);
 			gboolean answer = !strcasecmp(msg_sdp_type, "answer");
 			if(!answer) {
 				JANUS_LOG(LOG_VERB, "This is a response to an offerless INVITE\n");
@@ -6167,10 +6167,10 @@ static void *janus_sip_relay_thread(void *data) {
 		g_thread_unref(g_thread_self());
 		return NULL;
 	}
-	JANUS_LOG(LOG_VERB, "Starting relay thread (%s <--> %s)\n", session->account.username, session->callee);
+	JANUS_LOG(LOG_INFO, "Starting relay thread (%s <--> %s)\n", session->account.username, session->callee);
 
 	if(!session->callee) {
-		JANUS_LOG(LOG_VERB, "[SIP-%s] Leaving thread, no callee...\n", session->account.username);
+		JANUS_LOG(LOG_INFO, "[SIP-%s] Leaving thread, no callee...\n", session->account.username);
 		janus_refcount_decrease(&session->ref);
 		g_thread_unref(g_thread_self());
 		return NULL;
@@ -6524,7 +6524,7 @@ gpointer janus_sip_sofia_thread(gpointer user_data) {
 		g_thread_unref(g_thread_self());
 		return NULL;
 	}
-	JANUS_LOG(LOG_VERB, "Joining sofia loop thread (%s)...\n", session->account.username);
+	JANUS_LOG(LOG_INFO, "Joining sofia loop thread (%s)...\n", session->account.username);
 	session->stack = g_malloc0(sizeof(ssip_t));
 	su_home_init(session->stack->s_home);
 	session->stack->session = session;

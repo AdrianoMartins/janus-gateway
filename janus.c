@@ -4097,7 +4097,7 @@ gint main(int argc, char *argv[])
 	dir = opendir(path);
 	if(!dir) {
 		/* Not really fatal, we don't care and go on anyway: loggers are not fundamental */
-		JANUS_LOG(LOG_WARN, "\tCouldn't access logger plugins folder...\n");
+		JANUS_LOG(LOG_VERB, "\tCouldn't access logger plugins folder...\n");
 	} else {
 		/* Any loggers to ignore? */
 		item = janus_config_get(config, config_loggers, janus_config_type_item, "disable");

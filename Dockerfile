@@ -6,28 +6,18 @@ ARG JANUS_POST_PROCESSING=--enable-post-processing
 ARG JANUS_DATA_CHANNELS=--disable-data-channels
 ARG JANUS_DOCS=--disable-docs
 
+ARG JANUS_TRANSPORT_ALL=--disable-all-transports
 ARG JANUS_TRANSPORT_REST=--enable-rest
 ARG JANUS_TRANSPORT_WEBSOCKET=--enable-websockets
-ARG JANUS_TRANSPORT_RABBIT_MQ=--disable-rabbitmq
-ARG JANUS_TRANSPORT_MQTT=--disable-mqtt
-ARG JANUS_TRANSPORT_UNIX_SOCKET=--disable-unix-sockets
-ARG JANUS_TRANSPORT_NANOMSG=--disable-nanomsg
 
-ARG JANUS_PLUGIN_AUDIOBRIDGE=--disable-plugin-audiobridge
-ARG JANUS_PLUGIN_DUKTAPE=--disable-plugin-duktape
-ARG JANUS_PLUGIN_ECHOTEST=--disable-plugin-echotest
-ARG JANUS_PLUGIN_LUA=--disable-plugin-lua
-ARG JANUS_PLUGIN_RECORDPLAY=--disable-plugin-recordplay
+ARG JANUS_PLUGIN_ALL=--disable-all-plugins
 ARG JANUS_PLUGIN_SIP=--enable-plugin-sip
-ARG JANUS_PLUGIN_NOSIP=--disable-plugin-nosip
-ARG JANUS_PLUGIN_STREAMING=--disable-plugin-streaming
-ARG JANUS_PLUGIN_TEXTROOM=--disable-plugin-textroom
-ARG JANUS_PLUGIN_VIDEOCALL=--disable-plugin-videocall
-ARG JANUS_PLUGIN_VIDEOROOM=--disable-plugin-videoroom
-ARG JANUS_PLUGIN_VOICEMAIL=--disable-plugin-voicemail
 
 ARG JANUS_LOGGERS_ALL=--disable-all-loggers
-ARG JANUS_LOGGERS_JSON=--enable-json-logger
+ARG JANUS_LOGGERS_JSON=--disable-json-logger
+
+ARG JANUS_HANDLERS_ALL=--disable-all-handlers
+ARG JANUS_HANDLERS_SAMPLE=--enable-sample-event-handler
 
 # Install Janus Dependencies 
 RUN export DEBIAN_FRONTEND=noninteractive \
@@ -74,32 +64,24 @@ ADD . /tmp/janus-gateway
 RUN cd /tmp/janus-gateway && sh autogen.sh \
   && ./configure --prefix=/ \
     # Janus configuration
+    $JANUS_OPENSSL \
     $JANUS_BORINGSSL \
     $JANUS_POST_PROCESSING \
     $JANUS_DATA_CHANNELS \
     $JANUS_DOCS \
     # Transport configuration
-    $JANUS_TRANSPORT_REST \
+    $JANUS_TRANSPORT_ALL \
     $JANUS_TRANSPORT_WEBSOCKET \
-    $JANUS_TRANSPORT_RABBIT_MQ \
-    $JANUS_TRANSPORT_MQTT \
-    $JANUS_TRANSPORT_UNIX_SOCKET \
+    $JANUS_TRANSPORT_REST \
     # Plugins configuration
-    $JANUS_PLUGIN_AUDIOBRIDGE \
-    $JANUS_PLUGIN_ECHOTEST \
-    $JANUS_PLUGIN_RECORDPLAY \
+    $JANUS_PLUGIN_ALL \
     $JANUS_PLUGIN_SIP \
-    $JANUS_PLUGIN_NOSIP \
-    $JANUS_PLUGIN_STREAMING \
-    $JANUS_PLUGIN_TEXTROOM \
-    $JANUS_PLUGIN_VIDEOCALL \
-    $JANUS_PLUGIN_VIDEOROOM \
-    $JANUS_PLUGIN_VOICEMAIL \
-    $JANUS_PLUGIN_DUKTAPE \
-    $JANUS_PLUGIN_LUA \
     # Loggers
     $JANUS_LOGGERS_ALL \
     $JANUS_LOGGERS_JSON \
+    # Handlers
+    $JANUS_HANDLERS_ALL \
+    $JANUS_HANDLERS_SAMPLE \
   && make && make install && make configs
 
 # Cleanup
@@ -122,8 +104,8 @@ FROM scratch
 COPY --from=buildJanus / /
 
 # Config
-EXPOSE 7088/tcp 7089/tcp 8088/tcp 8089/tcp 8188/tcp 8189/tcp
-VOLUME /etc/janus/ /share/janus/recordings/
+EXPOSE 7088/tcp 7089/tcp 8088/tcp 8089/tcp 8188/tcp 8189/tcp 10000-20000/udp
+VOLUME /etc/janus/ /share/janus/recordings/ /share/janus/logs/
 
 # Start Script
 ADD docker-entrypoint.sh /docker-entrypoint.sh

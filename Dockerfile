@@ -127,4 +127,4 @@ VOLUME /etc/janus/ /share/janus/recordings/
 
 # Start Script
 ADD docker-entrypoint.sh /docker-entrypoint.sh
-ENTRYPOINT ["/docker-entrypoint.sh"]
+ENTRYPOINT ["sh", "-c", "/docker-entrypoint.sh"]

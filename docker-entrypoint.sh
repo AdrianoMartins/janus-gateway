@@ -17,7 +17,8 @@ fi
 
 if [ "$JANUS_LOG_TO_FILE" = true ]
 then
-    ARGS="${ARGS} -L /share/janus/logs"
+    container_name=`hostname`
+    ARGS="${ARGS} -L /share/janus/logs/janus-${container_name}.log"
 fi
 
 if [ "$JANUS_LOG_DISABLE_STDOUT" = true ]

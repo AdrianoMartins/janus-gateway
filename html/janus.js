@@ -1234,6 +1234,7 @@ function Janus(gatewayCallbacks) {
 						muteVideo : function() { return mute(handleId, true, true); },
 						unmuteVideo : function() { return mute(handleId, true, false); },
 						getBitrate : function() { return getBitrate(handleId); },
+						getBitrateAudio : function() { return getBitrateAudio(handleId); },
 						send : function(callbacks) { sendMessage(handleId, callbacks); },
 						data : function(callbacks) { sendData(handleId, callbacks); },
 						dtmf : function(callbacks) { sendDtmf(handleId, callbacks); },
@@ -1319,6 +1320,7 @@ function Janus(gatewayCallbacks) {
 						muteVideo : function() { return mute(handleId, true, true); },
 						unmuteVideo : function() { return mute(handleId, true, false); },
 						getBitrate : function() { return getBitrate(handleId); },
+						getBitrateAudio : function() { return getBitrateAudio(handleId); },
 						send : function(callbacks) { sendMessage(handleId, callbacks); },
 						data : function(callbacks) { sendData(handleId, callbacks); },
 						dtmf : function(callbacks) { sendDtmf(handleId, callbacks); },
@@ -1835,7 +1837,7 @@ function Janus(gatewayCallbacks) {
 			Janus.debug(config.pc);
 			if(config.pc.getStats) {	// FIXME
 				config.volume = {};
-				config.bitrate.value = "0 kbits/sec";
+				config.bitrate.value = "0";
 			}
 			Janus.log("Preparing local SDP and gathering candidates (trickle=" + config.trickle + ")");
 			config.pc.oniceconnectionstatechange = function(e) {
@@ -3164,6 +3166,70 @@ function Janus(gatewayCallbacks) {
 		}
 	}
 
+	function getBitrateAudio(handleId) {
+		var pluginHandle = pluginHandles[handleId];
+		if(!pluginHandle || !pluginHandle.webrtcStuff) {
+			Janus.warn("Invalid handle");
+			return "Invalid handle";
+		}
+		var config = pluginHandle.webrtcStuff;
+		if(!config.pc)
+			return "Invalid PeerConnection";
+		// Start getting the bitrate, if getStats is supported
+		if(config.pc.getStats) {
+			if(!config.bitrate.timer) {
+				Janus.log("Starting bitrate timer (via getStats)");
+				config.bitrate.timer = setInterval(function() {
+					config.pc.getStats()
+						.then(function(stats) {
+							stats.forEach(function (res) {
+								if(!res)
+									return;
+								var inStats = false;
+								// Check if these are statistics on incoming media
+								if((res.mediaType === "audio" || res.id.toLowerCase().indexOf("audio") > -1) &&
+										res.type === "inbound-rtp" && res.id.indexOf("rtcp") < 0) {
+									// New stats
+									inStats = true;
+								} else if(res.type == 'ssrc' && res.bytesReceived &&
+										(res.googCodecName === "VP8" || res.googCodecName === "")) {
+									// Older Chromer versions
+									inStats = true;
+								}
+								// Parse stats now
+								if(inStats) {
+									config.bitrate.bsnow = res.bytesReceived;
+									config.bitrate.tsnow = res.timestamp;
+									if(config.bitrate.bsbefore === null || config.bitrate.tsbefore === null) {
+										// Skip this round
+										config.bitrate.bsbefore = config.bitrate.bsnow;
+										config.bitrate.tsbefore = config.bitrate.tsnow;
+									} else {
+										// Calculate bitrate
+										var timePassed = config.bitrate.tsnow - config.bitrate.tsbefore;
+										if(Janus.webRTCAdapter.browserDetails.browser === "safari")
+											timePassed = timePassed/1000;	// Apparently the timestamp is in microseconds, in Safari
+										var bitRate = Math.round((config.bitrate.bsnow - config.bitrate.bsbefore) * 8 / timePassed);
+										if(Janus.webRTCAdapter.browserDetails.browser === "safari")
+											bitRate = parseInt(bitRate/1000);
+										config.bitrate.value = bitRate;
+										//~ Janus.log("Estimated bitrate is " + config.bitrate.value);
+										config.bitrate.bsbefore = config.bitrate.bsnow;
+										config.bitrate.tsbefore = config.bitrate.tsnow;
+									}
+								}
+							});
+						});
+				}, 1000);
+				return "0";	// We don't have a bitrate value yet
+			}
+			return config.bitrate.value;
+		} else {
+			Janus.warn("Getting the audio bitrate unsupported by browser");
+			return "Feature unsupported by browser";
+		}
+	}	
+
 	function getBitrate(handleId) {
 		var pluginHandle = pluginHandles[handleId];
 		if(!pluginHandle || !pluginHandle.webrtcStuff) {
@@ -3210,7 +3276,7 @@ function Janus(gatewayCallbacks) {
 										var bitRate = Math.round((config.bitrate.bsnow - config.bitrate.bsbefore) * 8 / timePassed);
 										if(Janus.webRTCAdapter.browserDetails.browser === "safari")
 											bitRate = parseInt(bitRate/1000);
-										config.bitrate.value = bitRate + ' kbits/sec';
+										config.bitrate.value = bitRate;
 										//~ Janus.log("Estimated bitrate is " + config.bitrate.value);
 										config.bitrate.bsbefore = config.bitrate.bsnow;
 										config.bitrate.tsbefore = config.bitrate.tsnow;
@@ -3219,7 +3285,7 @@ function Janus(gatewayCallbacks) {
 							});
 						});
 				}, 1000);
-				return "0 kbits/sec";	// We don't have a bitrate value yet
+				return "0";	// We don't have a bitrate value yet
 			}
 			return config.bitrate.value;
 		} else {

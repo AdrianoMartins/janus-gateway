@@ -7,7 +7,8 @@
 	"types": "janus.d.ts",
 	"typings": "janus.d.ts",
 	"scripts": {
-		"rollup": "rollup -c rollup.config.js"
+		"rollup": "rollup -c rollup.config.js",
+		"build": "rollup -c rollup.config.js --o ../dist/janus.js --f cjs"
 	},
 	"devDependencies": {
 		"rollup": "^0.50.0",

@@ -1584,7 +1584,7 @@ static int janus_http_admin_handler(void *cls, struct MHD_Connection *connection
 	janus_http_msg *msg = NULL;
 	if(ts == NULL) {
 		firstround = 1;
-		JANUS_LOG(LOG_VERB, "Got an admin/monitor HTTP %s request on %s...\n", method, url);
+		JANUS_LOG(LOG_HUGE, "Got an admin/monitor HTTP %s request on %s...\n", method, url);
 		JANUS_LOG(LOG_DBG, " ... Just parsing headers for now...\n");
 		msg = g_malloc0(sizeof(janus_http_msg));
 		msg->connection = connection;
